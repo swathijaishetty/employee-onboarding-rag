@@ -1,0 +1,19 @@
+IT ONBOARDING POLICY
+
+Laptop:
+New employees will receive a company laptop on their first working day.
+
+Company Email:
+A company email account will be created by the IT team on or before the employee's joining date.
+
+VPN Access:
+Employees who need access to internal company systems must request VPN access through the IT service portal.
+
+Password:
+Employees must change their temporary password after their first login.
+
+IT Support:
+For technical issues, employees should create a ticket through the IT service portal.
+
+Laptop Issues:
+If a company laptop has a hardware problem, employees should contact the IT support team rather than attempting repairs themselves.
