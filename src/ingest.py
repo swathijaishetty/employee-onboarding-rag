@@ -4,16 +4,18 @@ import chromadb
 import ollama
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from config import (
+    CHROMA_PATH,
+    COLLECTION_NAME,
+    EMBEDDING_MODEL,
+)
+
 
 # -----------------------------
 # 1. Configuration
 # -----------------------------
 
 DOCUMENTS_DIR = Path("data/documents")
-CHROMA_PATH = "chroma_db"
-COLLECTION_NAME = "employee_policies"
-
-EMBEDDING_MODEL = "nomic-embed-text"
 
 
 # -----------------------------
@@ -51,7 +53,6 @@ for file_path in DOCUMENTS_DIR.glob("*.txt"):
 
     content = file_path.read_text(encoding="utf-8")
 
-    # Split document into smaller, overlapping chunks
     chunks = splitter.split_text(content)
 
     for chunk_number, chunk in enumerate(chunks):

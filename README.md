@@ -19,10 +19,13 @@ A Retrieval-Augmented Generation (RAG) based employee onboarding assistant that 
 - Split documents into chunks
 - Generate embeddings
 - Store embeddings in ChromaDB
+- Rewrite user queries for better retrieval
 - Retrieve relevant document chunks
 - Generate answers using Llama 3.2
-- Handle basic greetings
+- Display sources used for the answer
+- Handle basic greetings and acknowledgements
 - Avoid answering when information is unavailable in the knowledge base
+- Interactive CLI-based chat
 
 ### Knowledge Base
 
@@ -36,14 +39,20 @@ A Retrieval-Augmented Generation (RAG) based employee onboarding assistant that 
 ### RAG Flow
 
 ```text
-User Question
-     ↓
-Question Embedding
-     ↓
-ChromaDB Retrieval
-     ↓
-Relevant Context
-     ↓
-Llama 3.2
-     ↓
-Generated Answer
+Documents
+    ↓
+Chunking
+    ↓
+Embeddings
+    ↓
+ChromaDB
+    ↓
+User Query
+    ↓
+Query Rewriting
+    ↓
+Retrieval
+    ↓
+LLM Generation
+    ↓
+Answer + Sources
