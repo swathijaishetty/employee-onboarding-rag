@@ -56,3 +56,8 @@ Retrieval
 LLM Generation
     ↓
 Answer + Sources
+```
+
+### Output
+
+![Employee Onboarding RAG Assistant Output](output/output_v1.png)
