@@ -1,0 +1,9 @@
+[
+  {"question": "When must a new full-time employee enroll in health benefits?", "expected_sources": ["benefits_eligibility_and_enrollment_2026.pdf"]},
+  {"question": "Compare benefits enrollment and standard email and portal access timing.", "expected_sources": ["benefits_policy.pdf", "it_access_and_identity_2026.pdf"], "expected_sections": [{"source": "it_access_and_identity_2026.pdf", "contains": "Account Provisioning"}]},
+  {"question": "Can I email a dependent's Social Security number to HR?", "expected_sources": ["benefits_eligibility_and_enrollment_2026.pdf", "information_security_and_data_handling_2026.pdf"]},
+  {"question": "What happens to company equipment when an employee leaves?", "expected_sources": ["offboarding_and_company_property_2026.pdf"]},
+  {"question": "How are travel costs submitted and approved?", "expected_sources": ["business_travel_2026.pdf", "expense_reimbursement_2026.pdf"]},
+  {"question": "Which policy governs an accommodation for a changed work schedule?", "expected_sources": ["workplace_accommodation_2026.pdf", "flexible_work_schedule_2026.pdf"]},
+  {"question": "What is served on the cafeteria sushi menu?", "expected_sources": []}
+]

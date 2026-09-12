@@ -94,3 +94,41 @@ Configuration is read from `.env` (`PDF_DIRECTORY`, `LLM_MODEL`, `EMBEDDING_MODE
 The example shows section-grounded retrieval, a follow-up resolved from session memory, an unsupported-question fallback, and clearing the stored conversation context.
 
 ![Employee Onboarding RAG Assistant Version 2 Output](output/output_v2.png)
+
+## Version 3 - Hybrid Policy RAG
+
+Version 3 is isolated in `src/v3/` and reads every PDF found in the configured
+directory; it does not assume a fixed document count. The current shared corpus
+contains the six baseline policies plus 20 fictional, two-page policies with
+effective dates, tables, eligibility distinctions, exceptions, and cross-policy
+references.
+
+The pipeline removes repeated PDF headers, preserves numbered policy sections,
+and adaptively splits only sections that exceed a configurable word ceiling.
+Stable content hashes allow incremental ingestion: unchanged chunks keep their
+embeddings while changed and deleted content is synchronized. Retrieval combines
+cosine-nearest semantic candidates with BM25 keyword candidates using reciprocal
+rank fusion, then reduces redundant evidence before grounded generation. Answers
+use verified inline citations, while bounded session memory rewrites ambiguous
+follow-up questions. A checked-in evaluation set measures source hit rate and
+mean reciprocal rank.
+
+```powershell
+python -m src.v3.test_chunking_v3
+python -m src.v3.test_retrieval_math_v3
+python -m src.v3.ingest_v3
+python -m src.v3.evaluate_v3
+python -m src.v3.main_v3
+```
+
+Version 3 settings use the `V3_` prefix, including `V3_PDF_DIRECTORY`,
+`V3_CHROMA_PATH`, `V3_COLLECTION_NAME`, `V3_LLM_MODEL`, `V3_EMBEDDING_MODEL`,
+`V3_MAX_CHUNK_WORDS`, confidence thresholds, candidate counts, rank-fusion
+controls, and memory limits.
+
+### Version 3 Output
+
+The output below demonstrates grounded citations, session-aware follow-up
+rewriting, a cross-policy comparison, and rejection of an unsupported question.
+
+![Employee Policy Assistant Version 3 Output](output/output_v3.png)
