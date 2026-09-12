@@ -61,3 +61,34 @@ Answer + Sources
 ### Output
 
 ![Employee Onboarding RAG Assistant Output](output/output_v1.png)
+
+## Version 2 - PDF RAG Pipeline
+
+Version 2 uses six one-page PDF policies as its knowledge base:
+
+- `benefits_policy.pdf`
+- `employee_onboarding.pdf`
+- `it_onboarding.pdf`
+- `leave_policy.pdf`
+- `payroll_policy.pdf`
+- `work_from_home_policy.pdf`
+
+The PDF pipeline is implemented in `src/v2/`. `pdf_reader.py` extracts and normalizes page text with `pypdf`; `chunk_pdf.py` creates overlapping chunks while retaining source, page, and chunk metadata; `ingest_v2.py` embeds each chunk with Ollama and synchronizes it into the local Chroma collection `employee_policies_v2`; `retrieval_v2.py` embeds a question, applies semantic and lexical relevance checks, and returns focused policy excerpts; `generation_v2.py` asks the Llama model to answer only from those excerpts and parse source citations; and `main_v2.py` provides the interactive CLI.
+
+### Running Version 2
+
+From the repository root, activate the Python 3.11 environment and ensure Ollama is running:
+
+```powershell
+.venv\Scripts\Activate.ps1
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+python -m src.v2.ingest_v2
+python -m src.v2.main_v2
+```
+
+Configuration is read from `.env` (`LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, and `DISTANCE_THRESHOLD`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Parser and chunking smoke checks can be run with `python src/v2/test_pdf_reader.py` and `python src/v2/test_chunk_pdf.py`.
+
+### Version 2 Output
+
+![Employee Onboarding RAG Assistant Version 2 Output](output/output_v2.png)
