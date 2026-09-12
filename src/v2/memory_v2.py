@@ -44,15 +44,18 @@ class SessionMemory:
         if not self._turns or not self._needs_context(question):
             return question
 
-        history = "\n".join(
-            f"User: {turn.question}\nAssistant: {turn.answer[:500]}"
-            for turn in self._turns
+        previous_turn = self._turns[-1]
+        history = (
+            f"User: {previous_turn.question}\n"
+            f"Assistant: {previous_turn.answer[:MAX_REWRITE_CHARS]}"
         )
         prompt = f"""Rewrite the latest employee question as a standalone search query.
-Resolve pronouns and omitted subjects using the conversation history.
+Resolve pronouns and omitted subjects using the immediately preceding turn.
+Replace only the ambiguous reference. Preserve the latest question's form and do
+not introduce a request for quantities or facts it did not ask for.
 Keep the meaning unchanged. Return only the rewritten question, with no explanation.
 
-Conversation history:
+Immediately preceding turn:
 {history}
 
 Latest question:
@@ -75,9 +78,20 @@ Latest question:
     @staticmethod
     def _needs_context(question: str) -> bool:
         lowered = question.lower()
-        tokens = re.findall(r"[a-z0-9]+", lowered)
-        markers = (
-            "what about", "how about", "and ", "it ", "that ", "those ",
-            "this ", "same", "also", "more details", "how many",
-        )
-        return len(tokens) <= 8 or any(marker in lowered for marker in markers)
+        tokens = set(re.findall(r"[a-z0-9]+", lowered))
+        referential_words = {
+            "it", "its", "that", "those", "this", "these", "they", "them",
+            "their", "same", "there",
+        }
+        if tokens & referential_words:
+            return True
+
+        # Short questions need history only when they lack a concrete topic.
+        generic_words = {
+            "a", "about", "and", "are", "available", "can", "days", "details",
+            "do", "does", "for", "get", "how", "i", "is", "limit", "many",
+            "me", "more", "please", "process", "rules", "tell", "the", "what",
+            "when", "where", "which", "who", "why",
+        }
+        meaningful_words = tokens - generic_words
+        return len(tokens) <= 8 and not meaningful_words

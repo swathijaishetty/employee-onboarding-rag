@@ -17,6 +17,9 @@ memory_v2.ollama.chat = fake_chat
 try:
     memory = SessionMemory(max_turns=2)
     memory.add_turn("Tell me about annual leave.", "Full-time employees receive 18 days.")
+    assert memory.standalone_question("What about sick leave?") == (
+        "What about sick leave?"
+    )
     assert memory.standalone_question("How many are available?") == (
         "How many annual leave days are available?"
     )

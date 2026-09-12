@@ -12,7 +12,9 @@ try:
         DISTANCE_THRESHOLD,
         EMBEDDING_MODEL,
         LEXICAL_FALLBACK_DISTANCE,
+        LEXICAL_SCORE_WEIGHT,
         MAX_CHUNKS_PER_SOURCE,
+        RANK_SCORE_MARGIN,
         RETRIEVAL_CANDIDATE_MULTIPLIER,
         TOP_K,
     )
@@ -23,7 +25,9 @@ except ImportError:  # pragma: no cover
         DISTANCE_THRESHOLD,
         EMBEDDING_MODEL,
         LEXICAL_FALLBACK_DISTANCE,
+        LEXICAL_SCORE_WEIGHT,
         MAX_CHUNKS_PER_SOURCE,
+        RANK_SCORE_MARGIN,
         RETRIEVAL_CANDIDATE_MULTIPLIER,
         TOP_K,
     )
@@ -122,18 +126,18 @@ def retrieve_documents(
                 "chunk_number": chunk_number,
                 "distance": float(distance),
                 "lexical_hits": lexical_hits,
+                "rank_score": float(distance) - (
+                    LEXICAL_SCORE_WEIGHT * lexical_hits
+                ),
             }
         )
 
-    # Prefer excerpts sharing the strongest set of terms with the question. This
-    # keeps a leave answer from being diluted by a merely related onboarding
-    # excerpt that happens to mention one generic word.
-    if query_terms and candidates:
-        strongest_match = max(item["lexical_hits"] for item in candidates)
-        candidates = [
-            item for item in candidates if item["lexical_hits"] == strongest_match
-        ]
-    candidates.sort(key=lambda item: (-item["lexical_hits"], item["distance"]))
+    # Blend semantic distance and keyword evidence. Keep nearby runner-up
+    # sections because the question and its answer may span two policy sections.
+    candidates.sort(key=lambda item: item["rank_score"])
+    if candidates:
+        cutoff = candidates[0]["rank_score"] + RANK_SCORE_MARGIN
+        candidates = [item for item in candidates if item["rank_score"] <= cutoff]
     selected: list[dict] = []
     per_source: dict[str, int] = {}
     for item in candidates:

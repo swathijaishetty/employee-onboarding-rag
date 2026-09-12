@@ -87,8 +87,10 @@ python -m src.v2.ingest_v2
 python -m src.v2.main_v2
 ```
 
-Configuration is read from `.env` (`PDF_DIRECTORY`, `LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, `DISTANCE_THRESHOLD`, `MEMORY_TURNS`, `MAX_SECTION_CHARS`, `MIN_SECTION_CHUNKS`, `RETRIEVAL_CANDIDATE_MULTIPLIER`, `MAX_CHUNKS_PER_SOURCE`, `LEXICAL_FALLBACK_DISTANCE`, and `MAX_REWRITE_CHARS`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Type `clear` during a session to remove follow-up context. Parser, chunking, and memory smoke checks can be run with `python src/v2/test_pdf_reader.py`, `python src/v2/test_chunk_pdf.py`, and `python src/v2/test_memory_v2.py`.
+Configuration is read from `.env` (`PDF_DIRECTORY`, `LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, `DISTANCE_THRESHOLD`, `MEMORY_TURNS`, `MAX_SECTION_CHARS`, `MIN_SECTION_CHUNKS`, `RETRIEVAL_CANDIDATE_MULTIPLIER`, `MAX_CHUNKS_PER_SOURCE`, `LEXICAL_FALLBACK_DISTANCE`, `LEXICAL_SCORE_WEIGHT`, `RANK_SCORE_MARGIN`, and `MAX_REWRITE_CHARS`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Type `clear` during a session to remove follow-up context. Parser, chunking, and memory smoke checks can be run with `python src/v2/test_pdf_reader.py`, `python src/v2/test_chunk_pdf.py`, and `python src/v2/test_memory_v2.py`.
 
 ### Version 2 Output
+
+The example shows section-grounded retrieval, a follow-up resolved from session memory, an unsupported-question fallback, and clearing the stored conversation context.
 
 ![Employee Onboarding RAG Assistant Version 2 Output](output/output_v2.png)
