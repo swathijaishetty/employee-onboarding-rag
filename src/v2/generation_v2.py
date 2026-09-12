@@ -1,14 +1,13 @@
 """Grounded answer generation for the Version 2 assistant."""
 
-import os
 import re
 
 import ollama
-from dotenv import load_dotenv
 
-
-load_dotenv()
-LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2:3b")
+try:
+    from .config_v2 import LLM_MODEL
+except ImportError:  # pragma: no cover
+    from config_v2 import LLM_MODEL
 FALLBACK_ANSWER = "I couldn't find that information in the available employee documents."
 
 

@@ -1,23 +1,16 @@
 """Ingest the six policy PDFs into a local Chroma collection."""
 
-import os
 from pathlib import Path
 
 import chromadb
 import ollama
-from dotenv import load_dotenv
 
 try:  # Support ``python -m src.v2.ingest_v2`` and direct execution.
     from .chunk_pdf import PDF_DIRECTORY, create_chunks
+    from .config_v2 import CHROMA_PATH, COLLECTION_NAME, EMBEDDING_MODEL
 except ImportError:  # pragma: no cover
     from chunk_pdf import PDF_DIRECTORY, create_chunks
-
-
-load_dotenv()
-
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-CHROMA_PATH = os.getenv("CHROMA_PATH", "chroma_db_v2")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "employee_policies_v2")
+    from config_v2 import CHROMA_PATH, COLLECTION_NAME, EMBEDDING_MODEL
 
 
 def get_collection():
@@ -44,10 +37,8 @@ def ingest_documents(pdf_directory: str | Path = PDF_DIRECTORY) -> int:
 
     pdf_directory = Path(pdf_directory)
     pdf_files = sorted(pdf_directory.glob("*.pdf"))
-    if len(pdf_files) != 6:
-        raise ValueError(
-            f"Expected 6 policy PDFs in {pdf_directory}, found {len(pdf_files)}"
-        )
+    if not pdf_files:
+        raise FileNotFoundError(f"No policy PDFs found in {pdf_directory}")
 
     print(f"Reading {len(pdf_files)} PDFs from {pdf_directory}")
     chunks = create_chunks(pdf_directory)
@@ -58,7 +49,8 @@ def ingest_documents(pdf_directory: str | Path = PDF_DIRECTORY) -> int:
     documents = [chunk.page_content for chunk in chunks]
     metadatas = [chunk.metadata for chunk in chunks]
     ids = [
-        f"{Path(metadata['source']).stem}-p{metadata['page']}-c{metadata['chunk_number']}"
+        f"{Path(metadata['source']).stem}-p{metadata['page']}"
+        f"-s{metadata['section_number']}-part{metadata['part_number']}"
         for metadata in metadatas
     ]
 

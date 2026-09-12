@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 
 - `src/` contains the Version 1 text-based RAG pipeline: ingestion, retrieval, generation, configuration, and the CLI in `main.py`.
-- `src/v2/` contains the PDF-based pipeline. Its modules read and normalize PDFs, create chunks, ingest them into Chroma, retrieve context, and run the Version 2 CLI.
+- `src/v2/` contains the PDF-based pipeline. Its modules read and normalize PDFs, create adaptive section chunks, ingest them into Chroma, retrieve context, rewrite follow-up questions, and run the Version 2 CLI.
 - `data/documents/` is the knowledge base (`.txt` files plus PDF collections). Treat these files as source content, not generated output.
 - `chroma_db/` and `chroma_db_v2/` are local vector-store artifacts. `output/` holds captured project images.
 
@@ -16,6 +16,7 @@ Run commands from the repository root using the Python 3.11 virtual environment 
 - `python -m src.v2.ingest_v2` ingests PDFs from `data/documents/PDF Files/` into the Version 2 store.
 - `python -m src.v2.main_v2` starts the Version 2 assistant.
 - `python src/v2/pdf_reader.py` and `python src/v2/chunk_pdf.py` provide parser and chunking smoke checks.
+- `python src/v2/test_memory_v2.py` checks bounded follow-up session memory without calling Ollama.
 - `python src/test_embedding.py`, `python src/test_chroma.py`, and `python src/test_retrieval.py` exercise Ollama/Chroma integration; they require the corresponding local service and collection.
 
 There is no project build file, formatter, linter, or automated pytest configuration. Avoid committing generated databases or `.env` files.

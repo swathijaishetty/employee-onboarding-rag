@@ -2,9 +2,11 @@
 
 try:  # Support module and direct execution.
     from .generation_v2 import generate_answer
+    from .memory_v2 import SessionMemory
     from .retrieval_v2 import retrieve_documents
 except ImportError:  # pragma: no cover
     from generation_v2 import generate_answer
+    from memory_v2 import SessionMemory
     from retrieval_v2 import retrieve_documents
 
 
@@ -16,7 +18,10 @@ def main() -> None:
     print("=" * 60)
     print("Northstar Technologies - Employee Onboarding RAG")
     print("=" * 60)
-    print("Ask about the six onboarding policy PDFs. Type 'exit' to quit.\n")
+    print("Ask about the six onboarding policy PDFs. Type 'exit' to quit.")
+    print("Type 'clear' to reset follow-up context.\n")
+
+    memory = SessionMemory()
 
     while True:
         question = input("You: ").strip()
@@ -25,6 +30,10 @@ def main() -> None:
         if normalized in {"exit", "quit"}:
             print("Goodbye!")
             return
+        if normalized in {"clear", "reset", "new session"}:
+            memory.clear()
+            print("\nAssistant: Follow-up context cleared.\n")
+            continue
         if not question:
             continue
         if normalized in GREETINGS:
@@ -35,8 +44,9 @@ def main() -> None:
             continue
 
         try:
-            retrieved = retrieve_documents(question)
-            result = generate_answer(question, retrieved)
+            search_question = memory.standalone_question(question)
+            retrieved = retrieve_documents(search_question)
+            result = generate_answer(search_question, retrieved)
             print(f"\nAssistant: {result['answer']}")
 
             cited = result["source_numbers"]
@@ -49,6 +59,7 @@ def main() -> None:
                     if source_key not in seen_sources:
                         print(f"- {source['source']}, page {source['page']}")
                         seen_sources.add(source_key)
+            memory.add_turn(question, result["answer"])
             print()
         except Exception as error:
             print(f"\nError: {error}\n")

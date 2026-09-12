@@ -73,7 +73,7 @@ Version 2 uses six one-page PDF policies as its knowledge base:
 - `payroll_policy.pdf`
 - `work_from_home_policy.pdf`
 
-The PDF pipeline is implemented in `src/v2/`. `pdf_reader.py` extracts and normalizes page text with `pypdf`; `chunk_pdf.py` creates overlapping chunks while retaining source, page, and chunk metadata; `ingest_v2.py` embeds each chunk with Ollama and synchronizes it into the local Chroma collection `employee_policies_v2`; `retrieval_v2.py` embeds a question, applies semantic and lexical relevance checks, and returns focused policy excerpts; `generation_v2.py` asks the Llama model to answer only from those excerpts and parse source citations; and `main_v2.py` provides the interactive CLI.
+The PDF pipeline is implemented in `src/v2/`. `pdf_reader.py` extracts and normalizes page text with `pypdf`; `chunk_pdf.py` splits at policy section headings and only subdivides unusually long sections at sentence boundaries, retaining source, page, and section metadata; `ingest_v2.py` embeds each chunk with Ollama and synchronizes it into the local Chroma collection `employee_policies_v2`; `retrieval_v2.py` embeds a question, applies semantic and lexical relevance checks, and returns focused policy excerpts; `generation_v2.py` asks the Llama model to answer only from those excerpts and parse source citations; `memory_v2.py` rewrites context-dependent follow-ups using a bounded recent-turn window; and `main_v2.py` provides the interactive CLI.
 
 ### Running Version 2
 
@@ -87,7 +87,7 @@ python -m src.v2.ingest_v2
 python -m src.v2.main_v2
 ```
 
-Configuration is read from `.env` (`LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, and `DISTANCE_THRESHOLD`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Parser and chunking smoke checks can be run with `python src/v2/test_pdf_reader.py` and `python src/v2/test_chunk_pdf.py`.
+Configuration is read from `.env` (`PDF_DIRECTORY`, `LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, `DISTANCE_THRESHOLD`, `MEMORY_TURNS`, `MAX_SECTION_CHARS`, `MIN_SECTION_CHUNKS`, `RETRIEVAL_CANDIDATE_MULTIPLIER`, `MAX_CHUNKS_PER_SOURCE`, `LEXICAL_FALLBACK_DISTANCE`, and `MAX_REWRITE_CHARS`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Type `clear` during a session to remove follow-up context. Parser, chunking, and memory smoke checks can be run with `python src/v2/test_pdf_reader.py`, `python src/v2/test_chunk_pdf.py`, and `python src/v2/test_memory_v2.py`.
 
 ### Version 2 Output
 

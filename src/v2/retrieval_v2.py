@@ -1,20 +1,32 @@
 """Retrieve relevant chunks from the Version 2 Chroma collection."""
 
-import os
 import re
 
 import chromadb
 import ollama
-from dotenv import load_dotenv
 
-
-load_dotenv()
-
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-CHROMA_PATH = os.getenv("CHROMA_PATH", "chroma_db_v2")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "employee_policies_v2")
-TOP_K = int(os.getenv("TOP_K", "3"))
-DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.85"))
+try:
+    from .config_v2 import (
+        CHROMA_PATH,
+        COLLECTION_NAME,
+        DISTANCE_THRESHOLD,
+        EMBEDDING_MODEL,
+        LEXICAL_FALLBACK_DISTANCE,
+        MAX_CHUNKS_PER_SOURCE,
+        RETRIEVAL_CANDIDATE_MULTIPLIER,
+        TOP_K,
+    )
+except ImportError:  # pragma: no cover
+    from config_v2 import (
+        CHROMA_PATH,
+        COLLECTION_NAME,
+        DISTANCE_THRESHOLD,
+        EMBEDDING_MODEL,
+        LEXICAL_FALLBACK_DISTANCE,
+        MAX_CHUNKS_PER_SOURCE,
+        RETRIEVAL_CANDIDATE_MULTIPLIER,
+        TOP_K,
+    )
 
 STOP_WORDS = {
     "a", "an", "and", "are", "be", "can", "do", "for", "from", "get",
@@ -67,7 +79,9 @@ def retrieve_documents(
         return []
 
     embedding = ollama.embed(model=EMBEDDING_MODEL, input=query)["embeddings"][0]
-    n_results = min(max(top_k * 3, top_k), collection.count())
+    n_results = min(
+        max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k), collection.count()
+    )
     results = collection.query(
         query_embeddings=[embedding],
         n_results=n_results,
@@ -86,6 +100,7 @@ def retrieve_documents(
         source = str(metadata.get("source", "Unknown"))
         page = int(metadata.get("page", 0))
         chunk_number = int(metadata.get("chunk_number", 0))
+        section = str(metadata.get("section", ""))
         key = (source, page, chunk_number)
         document_terms = set(re.findall(r"[a-z0-9]+", str(document).lower()))
         lexical_hits = len(query_terms & document_terms)
@@ -93,7 +108,9 @@ def retrieve_documents(
         # questions (for example, a stock-ticker question against policy text).
         if key in seen or distance > distance_threshold:
             continue
-        if lexical_hits == 0 and distance > min(distance_threshold, 0.38):
+        if lexical_hits == 0 and distance > min(
+            distance_threshold, LEXICAL_FALLBACK_DISTANCE
+        ):
             continue
         seen.add(key)
         candidates.append(
@@ -101,6 +118,7 @@ def retrieve_documents(
                 "document": document,
                 "source": source,
                 "page": page,
+                "section": section,
                 "chunk_number": chunk_number,
                 "distance": float(distance),
                 "lexical_hits": lexical_hits,
@@ -119,7 +137,7 @@ def retrieve_documents(
     selected: list[dict] = []
     per_source: dict[str, int] = {}
     for item in candidates:
-        if per_source.get(item["source"], 0) >= 2:
+        if per_source.get(item["source"], 0) >= MAX_CHUNKS_PER_SOURCE:
             continue
         selected.append(item)
         per_source[item["source"]] = per_source.get(item["source"], 0) + 1
