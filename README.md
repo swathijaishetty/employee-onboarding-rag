@@ -160,8 +160,10 @@ Gemini with `gemini-2.5-flash` and `gemini-embedding-001`. Add a free-tier
 
 The document index and query must always use the same provider and embedding
 model. Render therefore uses its own Gemini collection name and rebuilds it at
-deploy time. If the free Gemini quota is reached, the API returns a clear quota
-message instead of falling back to a paid provider. Never commit API keys.
+deploy time. Ingestion respects Gemini's free per-minute embedding quota by
+waiting for the retry delay returned by Google and resuming the failed batch.
+If the daily free quota is exhausted, the API returns a clear quota message
+instead of falling back to a paid provider. Never commit API keys.
 
 To deploy without model charges, create a Gemini API key in a Google AI project
 that does not have Cloud Billing enabled. In Render, create a Blueprint from this

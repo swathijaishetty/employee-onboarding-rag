@@ -54,6 +54,13 @@ class Settings:
         default=os.getenv("GEMINI_API_KEY", "").strip(), repr=False
     )
     embedding_batch_size: int = _integer("V3_EMBEDDING_BATCH_SIZE", 16)
+    embedding_max_retries: int = _integer("V3_EMBEDDING_MAX_RETRIES", 6)
+    embedding_retry_base_seconds: float = _number(
+        "V3_EMBEDDING_RETRY_BASE_SECONDS", 2.0, 0.1, 60.0
+    )
+    embedding_retry_max_seconds: float = _number(
+        "V3_EMBEDDING_RETRY_MAX_SECONDS", 60.0, 1.0, 600.0
+    )
     max_chunk_words: int = _integer("V3_MAX_CHUNK_WORDS", 240, 80)
     chunk_overlap_sentences: int = _integer("V3_CHUNK_OVERLAP_SENTENCES", 1)
     semantic_candidates: int = _integer("V3_SEMANTIC_CANDIDATES", 24)

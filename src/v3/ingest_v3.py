@@ -1,6 +1,8 @@
 """Incrementally synchronize Version 3 chunks with Chroma."""
 
 from pathlib import Path
+import re
+import time
 
 import chromadb
 
@@ -35,14 +37,50 @@ def _embed(texts: list[str], settings: Settings) -> list[list[float]]:
     vectors: list[list[float]] = []
     for start in range(0, len(texts), settings.embedding_batch_size):
         batch = texts[start : start + settings.embedding_batch_size]
-        response = embed(
-            model=settings.embedding_model,
-            input=batch,
-            task_type="RETRIEVAL_DOCUMENT",
-        )
+        response = _embed_batch(batch, settings)
         vectors.extend(response["embeddings"])
         print(f"Embedded {min(start + len(batch), len(texts))}/{len(texts)} new chunks")
     return vectors
+
+
+def _embed_batch(batch: list[str], settings: Settings) -> dict:
+    for attempt in range(settings.embedding_max_retries + 1):
+        try:
+            return embed(
+                model=settings.embedding_model,
+                input=batch,
+                task_type="RETRIEVAL_DOCUMENT",
+            )
+        except Exception as error:
+            delay = _quota_retry_delay(error, attempt, settings)
+            if delay is None or attempt == settings.embedding_max_retries:
+                raise
+            print(
+                f"Embedding quota reached; retrying this batch in {delay:.1f} seconds "
+                f"({attempt + 1}/{settings.embedding_max_retries})"
+            )
+            time.sleep(delay)
+    raise RuntimeError("Embedding retry loop ended unexpectedly")
+
+
+def _quota_retry_delay(
+    error: Exception, attempt: int, settings: Settings
+) -> float | None:
+    message = str(error)
+    code = getattr(error, "code", None)
+    if code != 429 and not re.search(r"429|RESOURCE_EXHAUSTED|quota", message, re.I):
+        return None
+    matches = re.findall(
+        r"(?:retry in\s+|retryDelay['\"\s:]+)([\d.]+)s", message, re.I
+    )
+    suggested = max(map(float, matches), default=0.0)
+    if suggested > settings.embedding_retry_max_seconds:
+        return None
+    exponential = settings.embedding_retry_base_seconds * (2**attempt)
+    return min(
+        max(suggested + 1.0, exponential),
+        settings.embedding_retry_max_seconds,
+    )
 
 
 def ingest_documents(directory: str | Path | None = None, settings: Settings = SETTINGS) -> dict:
