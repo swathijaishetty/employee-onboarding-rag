@@ -170,3 +170,17 @@ that does not have Cloud Billing enabled. In Render, create a Blueprint from thi
 repository, select the Free instance defined in `render.yaml`, and enter the key
 when Render requests `GEMINI_API_KEY`. Free-tier quotas are limited, so this
 configuration is intended for learning and portfolio demonstrations.
+
+### Sample Output Screenshots
+
+The following examples show grounded policy answers, cited sources,
+conversation follow-ups, unsupported-question handling, and the responsive
+mobile interface in the deployed Version 3 application.
+
+![Version 3 annual and sick leave responses](output/SampleOP1.jpeg)
+
+![Version 3 annual leave and work-from-home responses](output/SampleOP2.jpeg)
+
+![Version 3 laptop onboarding and unsupported salary responses](output/SampleOP3.jpeg)
+
+![Version 3 mobile policy comparison response](output/SampleOP4.jpeg)
