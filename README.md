@@ -155,7 +155,7 @@ instead of assuming a fixed corpus size.
 the Chroma index from the repository PDFs, and starts Uvicorn. Version 3 selects
 its model backend with `V3_MODEL_PROVIDER`: local development defaults to Ollama
 with `llama3.2:3b` and `nomic-embed-text`, while the Render blueprint selects
-Gemini with `gemini-2.5-flash` and `gemini-embedding-001`. Add a free-tier
+Gemini with `gemini-3.5-flash-lite` and `gemini-embedding-001`. Add a free-tier
 `GEMINI_API_KEY` as a secret in Render. The browser never receives this key.
 
 The document index and query must always use the same provider and embedding

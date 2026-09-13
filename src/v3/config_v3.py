@@ -42,7 +42,7 @@ class Settings:
     chroma_path: str = os.getenv("V3_CHROMA_PATH", "chroma_db_v3")
     collection_name: str = os.getenv("V3_COLLECTION_NAME", "employee_policies_v3")
     model_provider: str = _provider()
-    llm_model: str = _model("V3_LLM_MODEL", "llama3.2:3b", "gemini-2.5-flash")
+    llm_model: str = _model("V3_LLM_MODEL", "llama3.2:3b", "gemini-3.5-flash-lite")
     embedding_model: str = _model(
         "V3_EMBEDDING_MODEL", "nomic-embed-text", "gemini-embedding-001"
     )

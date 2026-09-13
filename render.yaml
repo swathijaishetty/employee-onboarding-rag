@@ -10,7 +10,7 @@ services:
       - key: V3_MODEL_PROVIDER
         value: gemini
       - key: V3_LLM_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.5-flash-lite
       - key: V3_EMBEDDING_MODEL
         value: gemini-embedding-001
       - key: V3_CHROMA_PATH
