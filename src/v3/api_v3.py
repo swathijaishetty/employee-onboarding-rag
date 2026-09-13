@@ -14,7 +14,7 @@ from .config_v3 import SETTINGS
 from .generation_v3 import FALLBACK
 from .ingest_v3 import get_collection
 from .main_v3 import answer_question
-from .model_client_v3 import list_models
+from .model_client_v3 import list_models, provider_name
 from .session_store_v3 import RateLimiter, SessionStore
 
 
@@ -66,7 +66,7 @@ class ChatResponse(BaseModel):
     retrieval: list[dict[str, Any]] | None = None
 
 
-def _ollama_models() -> list[str]:
+def _configured_models() -> list[str]:
     response = list_models()
     raw_models = getattr(response, "models", None)
     if raw_models is None and isinstance(response, dict):
@@ -83,7 +83,10 @@ def _ollama_models() -> list[str]:
 
 @app.get("/api/health")
 async def health() -> dict:
-    details: dict[str, Any] = {"status": "healthy", "version": "3.0.0"}
+    provider = provider_name()
+    details: dict[str, Any] = {
+        "status": "healthy", "version": "3.0.0", "model_provider": provider
+    }
     try:
         collection = await run_in_threadpool(get_collection)
         metadata = await run_in_threadpool(
@@ -98,9 +101,12 @@ async def health() -> dict:
     except Exception:
         details.update(status="degraded", index_error="Index unavailable")
     try:
-        details.update(ollama="available", models=await run_in_threadpool(_ollama_models))
+        details.update(
+            model_service="available",
+            models=await run_in_threadpool(_configured_models),
+        )
     except Exception:
-        details.update(status="degraded", ollama="unavailable")
+        details.update(status="degraded", model_service="unavailable")
     details["active_sessions"] = sessions.count
     return details
 
@@ -119,8 +125,14 @@ async def chat(request: ChatRequest) -> ChatResponse:
         result = await run_in_threadpool(run_pipeline)
     except Exception as error:
         message = str(error).lower()
-        if "connect" in message or "ollama" in message:
-            raise HTTPException(503, "The local language-model service is unavailable") from error
+        if "resource_exhausted" in message or "quota" in message or "429" in message:
+            raise HTTPException(
+                429, "The free model quota is exhausted; try again after it resets"
+            ) from error
+        if any(term in message for term in ("connect", "ollama", "gemini", "api key")):
+            raise HTTPException(
+                503, f"The {provider_name().title()} model service is unavailable"
+            ) from error
         if "collection" in message:
             raise HTTPException(503, "The Version 3 index is unavailable; run ingestion first") from error
         raise HTTPException(500, "The assistant could not process this question") from error

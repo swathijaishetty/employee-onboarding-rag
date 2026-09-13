@@ -69,7 +69,11 @@ def retrieve(query: str, settings: Settings = SETTINGS) -> list[SearchResult]:
     ids = catalog["ids"]
     documents = catalog["documents"] or []
     metadatas = catalog["metadatas"] or []
-    query_vector = embed(model=settings.embedding_model, input=query)["embeddings"][0]
+    query_vector = embed(
+        model=settings.embedding_model,
+        input=query,
+        task_type="RETRIEVAL_QUERY",
+    )["embeddings"][0]
     semantic = collection.query(
         query_embeddings=[query_vector],
         n_results=min(settings.semantic_candidates, count),

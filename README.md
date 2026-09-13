@@ -129,7 +129,8 @@ structured source cards, optional retrieval diagnostics, service health, and
 conversation reset. Run Version 3 ingestion before starting the web application.
 
 Version 3 settings use the `V3_` prefix, including `V3_PDF_DIRECTORY`,
-`V3_CHROMA_PATH`, `V3_COLLECTION_NAME`, `V3_LLM_MODEL`, `V3_EMBEDDING_MODEL`,
+`V3_CHROMA_PATH`, `V3_COLLECTION_NAME`, `V3_MODEL_PROVIDER`, `V3_LLM_MODEL`,
+`V3_EMBEDDING_MODEL`,
 `V3_MAX_CHUNK_WORDS`, confidence thresholds, candidate counts, rank-fusion
 controls, and memory limits.
 
@@ -151,9 +152,19 @@ instead of assuming a fixed corpus size.
 ### Deploying Version 3
 
 `render.yaml` defines a Render web service that installs dependencies, builds
-the Chroma index from the repository PDFs, and starts Uvicorn. Because a cloud
-service cannot call Ollama on your laptop, configure `V3_OLLAMA_HOST` and
-`OLLAMA_API_KEY` for a hosted Ollama-compatible endpoint. Set `V3_LLM_MODEL` and
-`V3_EMBEDDING_MODEL` to models available from that endpoint; ingestion and
-retrieval must use the same embedding model. Local development leaves the host
-and API key blank. Never commit the API key.
+the Chroma index from the repository PDFs, and starts Uvicorn. Version 3 selects
+its model backend with `V3_MODEL_PROVIDER`: local development defaults to Ollama
+with `llama3.2:3b` and `nomic-embed-text`, while the Render blueprint selects
+Gemini with `gemini-2.5-flash` and `gemini-embedding-001`. Add a free-tier
+`GEMINI_API_KEY` as a secret in Render. The browser never receives this key.
+
+The document index and query must always use the same provider and embedding
+model. Render therefore uses its own Gemini collection name and rebuilds it at
+deploy time. If the free Gemini quota is reached, the API returns a clear quota
+message instead of falling back to a paid provider. Never commit API keys.
+
+To deploy without model charges, create a Gemini API key in a Google AI project
+that does not have Cloud Billing enabled. In Render, create a Blueprint from this
+repository, select the Free instance defined in `render.yaml`, and enter the key
+when Render requests `GEMINI_API_KEY`. Free-tier quotas are limited, so this
+configuration is intended for learning and portfolio demonstrations.

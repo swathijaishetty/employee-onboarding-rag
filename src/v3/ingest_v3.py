@@ -11,17 +11,35 @@ from .model_client_v3 import embed
 
 def get_collection(settings: Settings = SETTINGS):
     client = chromadb.PersistentClient(path=settings.chroma_path)
-    return client.get_or_create_collection(
+    expected_metadata = {
+        "hnsw:space": "cosine",
+        "pipeline_version": "3",
+        "model_provider": settings.model_provider,
+        "embedding_model": settings.embedding_model,
+    }
+    collection = client.get_or_create_collection(
         name=settings.collection_name,
-        metadata={"hnsw:space": "cosine", "pipeline_version": "3"},
+        metadata=expected_metadata,
     )
+    metadata = collection.metadata or {}
+    for key in ("model_provider", "embedding_model"):
+        if metadata.get(key) and metadata[key] != expected_metadata[key]:
+            raise ValueError(
+                f"Collection {settings.collection_name!r} was built with "
+                f"{key}={metadata[key]!r}; configure a separate collection or rebuild it"
+            )
+    return collection
 
 
 def _embed(texts: list[str], settings: Settings) -> list[list[float]]:
     vectors: list[list[float]] = []
     for start in range(0, len(texts), settings.embedding_batch_size):
         batch = texts[start : start + settings.embedding_batch_size]
-        response = embed(model=settings.embedding_model, input=batch)
+        response = embed(
+            model=settings.embedding_model,
+            input=batch,
+            task_type="RETRIEVAL_DOCUMENT",
+        )
         vectors.extend(response["embeddings"])
         print(f"Embedded {min(start + len(batch), len(texts))}/{len(texts)} new chunks")
     return vectors

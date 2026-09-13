@@ -175,9 +175,10 @@ async function checkHealth() {
     if (health.indexed_documents) elements.documentCount.textContent = `${health.indexed_documents}-policy`;
     elements.statusDot.className = `status-dot${ready ? "" : " error"}`;
     elements.statusLabel.textContent = ready ? "Systems ready" : "Setup required";
+    const provider = health.model_provider === "gemini" ? "Gemini" : "Ollama";
     elements.statusDetail.textContent = ready
-      ? `${health.indexed_chunks} chunks · Ollama connected`
-      : health.indexed_chunks === 0 ? "Run Version 3 ingestion" : "Check Ollama and Chroma";
+      ? `${health.indexed_chunks} chunks · ${provider} connected`
+      : health.indexed_chunks === 0 ? "Run Version 3 ingestion" : `Check ${provider} and Chroma`;
   } catch (_) {
     elements.statusDot.className = "status-dot error";
     elements.statusLabel.textContent = "API unavailable";

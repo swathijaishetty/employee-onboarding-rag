@@ -24,16 +24,34 @@ def _number(name: str, default: float, minimum: float, maximum: float) -> float:
     return value
 
 
+def _provider() -> str:
+    value = os.getenv("V3_MODEL_PROVIDER", "ollama").strip().lower()
+    if value not in {"ollama", "gemini"}:
+        raise ValueError("V3_MODEL_PROVIDER must be 'ollama' or 'gemini'")
+    return value
+
+
+def _model(name: str, ollama_default: str, gemini_default: str) -> str:
+    provider = os.getenv("V3_MODEL_PROVIDER", "ollama").strip().lower()
+    return os.getenv(name, gemini_default if provider == "gemini" else ollama_default).strip()
+
+
 @dataclass(frozen=True)
 class Settings:
     pdf_directory: Path = Path(os.getenv("V3_PDF_DIRECTORY", "data/documents/PDF Files"))
     chroma_path: str = os.getenv("V3_CHROMA_PATH", "chroma_db_v3")
     collection_name: str = os.getenv("V3_COLLECTION_NAME", "employee_policies_v3")
-    llm_model: str = os.getenv("V3_LLM_MODEL", "llama3.2:3b")
-    embedding_model: str = os.getenv("V3_EMBEDDING_MODEL", "nomic-embed-text")
+    model_provider: str = _provider()
+    llm_model: str = _model("V3_LLM_MODEL", "llama3.2:3b", "gemini-2.5-flash")
+    embedding_model: str = _model(
+        "V3_EMBEDDING_MODEL", "nomic-embed-text", "gemini-embedding-001"
+    )
     ollama_host: str = os.getenv("V3_OLLAMA_HOST", "").strip()
     ollama_api_key: str = field(
         default=os.getenv("OLLAMA_API_KEY", "").strip(), repr=False
+    )
+    gemini_api_key: str = field(
+        default=os.getenv("GEMINI_API_KEY", "").strip(), repr=False
     )
     embedding_batch_size: int = _integer("V3_EMBEDDING_BATCH_SIZE", 16)
     max_chunk_words: int = _integer("V3_MAX_CHUNK_WORDS", 240, 80)
