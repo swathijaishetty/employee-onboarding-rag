@@ -6,7 +6,10 @@ from . import model_client_v3
 
 
 class FakeModels:
+    generation_calls = 0
+
     def generate_content(self, **kwargs):
+        self.generation_calls += 1
         assert kwargs["model"] == "gemini-test"
         assert "USER: hello" in kwargs["contents"]
         return SimpleNamespace(text="hello back")
@@ -18,9 +21,11 @@ class FakeModels:
 
 original_provider = model_client_v3.SETTINGS.model_provider
 original_client = model_client_v3._gemini_client
+original_sleep = model_client_v3.time.sleep
 try:
     object.__setattr__(model_client_v3.SETTINGS, "model_provider", "gemini")
     model_client_v3._gemini_client = lambda: SimpleNamespace(models=FakeModels())
+    model_client_v3.time.sleep = lambda _: None
     chat = model_client_v3.chat(
         model="gemini-test", messages=[{"role": "user", "content": "hello"}]
     )
@@ -32,5 +37,6 @@ try:
 finally:
     object.__setattr__(model_client_v3.SETTINGS, "model_provider", original_provider)
     model_client_v3._gemini_client = original_client
+    model_client_v3.time.sleep = original_sleep
 
 print("model client assertions: ok")

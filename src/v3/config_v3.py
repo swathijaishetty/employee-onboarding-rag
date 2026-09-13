@@ -61,6 +61,10 @@ class Settings:
     embedding_retry_max_seconds: float = _number(
         "V3_EMBEDDING_RETRY_MAX_SECONDS", 60.0, 1.0, 600.0
     )
+    generation_max_retries: int = _integer("V3_GENERATION_MAX_RETRIES", 3)
+    generation_retry_base_seconds: float = _number(
+        "V3_GENERATION_RETRY_BASE_SECONDS", 1.0, 0.1, 30.0
+    )
     max_chunk_words: int = _integer("V3_MAX_CHUNK_WORDS", 240, 80)
     chunk_overlap_sentences: int = _integer("V3_CHUNK_OVERLAP_SENTENCES", 1)
     semantic_candidates: int = _integer("V3_SEMANTIC_CANDIDATES", 24)

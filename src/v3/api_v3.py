@@ -1,6 +1,7 @@
 """FastAPI application exposing the Version 3 RAG pipeline and web client."""
 
 from pathlib import Path
+import logging
 import re
 from typing import Any
 
@@ -19,6 +20,7 @@ from .session_store_v3 import RateLimiter, SessionStore
 
 
 WEB_DIRECTORY = Path(__file__).with_name("web")
+LOGGER = logging.getLogger(__name__)
 SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 app = FastAPI(
     title="Northstar Employee Policy Assistant",
@@ -124,14 +126,24 @@ async def chat(request: ChatRequest) -> ChatResponse:
     try:
         result = await run_in_threadpool(run_pipeline)
     except Exception as error:
+        LOGGER.exception(
+            "Version 3 chat failed (provider=%s, upstream_code=%s, upstream_status=%s)",
+            provider_name(),
+            getattr(error, "code", None),
+            getattr(error, "status", None),
+        )
         message = str(error).lower()
         if "resource_exhausted" in message or "quota" in message or "429" in message:
             raise HTTPException(
                 429, "The free model quota is exhausted; try again after it resets"
             ) from error
         if any(term in message for term in ("connect", "ollama", "gemini", "api key")):
+            code = getattr(error, "code", None)
+            status = getattr(error, "status", None)
+            suffix = f" ({code} {status})" if code else ""
             raise HTTPException(
-                503, f"The {provider_name().title()} model service is unavailable"
+                503,
+                f"The {provider_name().title()} model service is unavailable{suffix}",
             ) from error
         if "collection" in message:
             raise HTTPException(503, "The Version 3 index is unavailable; run ingestion first") from error
