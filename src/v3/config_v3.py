@@ -1,6 +1,6 @@
 """Validated, Version 3-specific configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
@@ -31,6 +31,10 @@ class Settings:
     collection_name: str = os.getenv("V3_COLLECTION_NAME", "employee_policies_v3")
     llm_model: str = os.getenv("V3_LLM_MODEL", "llama3.2:3b")
     embedding_model: str = os.getenv("V3_EMBEDDING_MODEL", "nomic-embed-text")
+    ollama_host: str = os.getenv("V3_OLLAMA_HOST", "").strip()
+    ollama_api_key: str = field(
+        default=os.getenv("OLLAMA_API_KEY", "").strip(), repr=False
+    )
     embedding_batch_size: int = _integer("V3_EMBEDDING_BATCH_SIZE", 16)
     max_chunk_words: int = _integer("V3_MAX_CHUNK_WORDS", 240, 80)
     chunk_overlap_sentences: int = _integer("V3_CHUNK_OVERLAP_SENTENCES", 1)
@@ -46,6 +50,12 @@ class Settings:
     max_chunks_per_source: int = _integer("V3_MAX_CHUNKS_PER_SOURCE", 2)
     memory_turns: int = _integer("V3_MEMORY_TURNS", 8)
     max_context_chars: int = _integer("V3_MAX_CONTEXT_CHARS", 12000, 1000)
+    api_host: str = os.getenv("V3_API_HOST", "127.0.0.1")
+    api_port: int = _integer("V3_API_PORT", 8000)
+    max_question_chars: int = _integer("V3_MAX_QUESTION_CHARS", 2000, 100)
+    session_ttl_seconds: int = _integer("V3_SESSION_TTL_SECONDS", 3600, 60)
+    max_sessions: int = _integer("V3_MAX_SESSIONS", 500)
+    requests_per_minute: int = _integer("V3_REQUESTS_PER_MINUTE", 12)
 
 
 SETTINGS = Settings()

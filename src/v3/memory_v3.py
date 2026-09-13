@@ -4,9 +4,8 @@ from collections import deque
 from dataclasses import dataclass
 import re
 
-import ollama
-
 from .config_v3 import SETTINGS, Settings
+from .model_client_v3 import chat
 
 
 @dataclass(frozen=True)
@@ -48,7 +47,7 @@ History:
 Latest question: {question}
 """
         try:
-            response = ollama.chat(
+            response = chat(
                 model=self.settings.llm_model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0},

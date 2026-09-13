@@ -2,13 +2,24 @@
 
 import re
 
-import ollama
-
 from .config_v3 import SETTINGS, Settings
+from .model_client_v3 import chat
 from .models_v3 import SearchResult
+from .retrieval_v3 import bm25_scores
 
 
 FALLBACK = "I couldn't find that information in the available employee documents."
+
+
+def _supported_citations(answer: str, citations: list[int], results: list[SearchResult]) -> list[int]:
+    """Discard model citations whose excerpts have weak lexical claim support."""
+    if not citations:
+        return []
+    scores = bm25_scores(re.sub(r"\[\d+\]", "", answer), [item.text for item in results])
+    strongest = max((scores[number - 1] for number in citations), default=0.0)
+    if strongest <= 0:
+        return []
+    return [number for number in citations if scores[number - 1] >= strongest * 0.3]
 
 
 def _context(results: list[SearchResult], limit: int) -> str:
@@ -46,7 +57,7 @@ EVIDENCE:
 
 QUESTION: {question}
 """
-    response = ollama.chat(
+    response = chat(
         model=settings.llm_model,
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
@@ -61,8 +72,15 @@ QUESTION: {question}
     answer = answer.strip()
     cited_values = re.findall(r"\[(\d+)\]", answer) + re.findall(r"\b(\d+)\b", sources_part)
     citations = sorted({int(value) for value in cited_values if 1 <= int(value) <= len(results)})
+    citations = _supported_citations(answer, citations, results)
     if answer != FALLBACK and not citations:
         return {"answer": FALLBACK, "citations": []}
+    allowed = set(citations)
+    answer = re.sub(
+        r"\s*\[(\d+)\]",
+        lambda match: match.group(0) if int(match.group(1)) in allowed else "",
+        answer,
+    ).strip()
     if citations and not re.search(r"\[\d+\]", answer):
         answer += " " + " ".join(f"[{number}]" for number in citations)
     evidence = " ".join(item.text for item in results)

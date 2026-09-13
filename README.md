@@ -119,7 +119,14 @@ python -m src.v3.test_retrieval_math_v3
 python -m src.v3.ingest_v3
 python -m src.v3.evaluate_v3
 python -m src.v3.main_v3
+python -m src.v3.api_v3
 ```
+
+The final command starts the FastAPI service and responsive chat interface at
+`http://127.0.0.1:8000`. Interactive API documentation is available at
+`http://127.0.0.1:8000/docs`. The web client provides isolated session memory,
+structured source cards, optional retrieval diagnostics, service health, and
+conversation reset. Run Version 3 ingestion before starting the web application.
 
 Version 3 settings use the `V3_` prefix, including `V3_PDF_DIRECTORY`,
 `V3_CHROMA_PATH`, `V3_COLLECTION_NAME`, `V3_LLM_MODEL`, `V3_EMBEDDING_MODEL`,
@@ -132,3 +139,21 @@ The output below demonstrates grounded citations, session-aware follow-up
 rewriting, a cross-policy comparison, and rejection of an unsupported question.
 
 ![Employee Policy Assistant Version 3 Output](output/output_v3.png)
+
+### Version 3 Web Interface
+
+The FastAPI application serves the chat frontend and JSON API from the same
+process. The interface reads document and chunk counts from the health endpoint
+instead of assuming a fixed corpus size.
+
+![Employee Policy Assistant Version 3 Web Interface](output/output_v3_web.png)
+
+### Deploying Version 3
+
+`render.yaml` defines a Render web service that installs dependencies, builds
+the Chroma index from the repository PDFs, and starts Uvicorn. Because a cloud
+service cannot call Ollama on your laptop, configure `V3_OLLAMA_HOST` and
+`OLLAMA_API_KEY` for a hosted Ollama-compatible endpoint. Set `V3_LLM_MODEL` and
+`V3_EMBEDDING_MODEL` to models available from that endpoint; ingestion and
+retrieval must use the same embedding model. Local development leaves the host
+and API key blank. Never commit the API key.

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ask grounded questions about Northstar employee policies.">
+  <title>Northstar Policy Assistant</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Northstar Policy Assistant home">
+        <span class="brand-mark">N</span>
+        <span><strong>Northstar</strong><small>Policy intelligence</small></span>
+      </a>
+
+      <div class="sidebar-copy">
+        <span class="eyebrow">Version 3</span>
+        <h1>Answers grounded in your policy library.</h1>
+        <p>Ask natural questions. Every supported answer points back to the exact document, page, and section.</p>
+      </div>
+
+      <div class="capabilities" aria-label="Assistant capabilities">
+        <div><span class="capability-icon">01</span><p><strong><span id="document-count">Policy</span> library</strong><small>Indexed and searchable</small></p></div>
+        <div><span class="capability-icon">02</span><p><strong>Hybrid retrieval</strong><small>Semantic search + BM25</small></p></div>
+        <div><span class="capability-icon">03</span><p><strong>Source tracing</strong><small>Page-level citations</small></p></div>
+      </div>
+
+      <div class="system-status">
+        <span id="status-dot" class="status-dot checking"></span>
+        <div><strong id="status-label">Checking services</strong><small id="status-detail">Connecting to the RAG API…</small></div>
+      </div>
+    </aside>
+
+    <main class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <span class="mobile-brand">Northstar</span>
+          <h2>Employee Policy Assistant</h2>
+          <p>Grounded answers from the current policy collection</p>
+        </div>
+        <div class="header-actions">
+          <label class="debug-control" title="Show retrieval scoring with each answer">
+            <input id="debug-toggle" type="checkbox">
+            <span>Retrieval details</span>
+          </label>
+          <button id="clear-button" class="secondary-button" type="button">New conversation</button>
+        </div>
+      </header>
+
+      <section id="messages" class="messages" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <div class="welcome-symbol" aria-hidden="true">✦</div>
+          <span class="eyebrow">Policy search, simplified</span>
+          <h2>What would you like to know?</h2>
+          <p>I can explain eligibility, deadlines, processes, exceptions, and related policies. I’ll tell you when the documents do not contain an answer.</p>
+          <div class="suggestions">
+            <button type="button" data-question="How many annual leave days do full-time employees receive?">
+              <span>Leave entitlement</span><strong>How much annual leave do I receive?</strong>
+            </button>
+            <button type="button" data-question="Compare benefits enrollment and standard email and portal access timing.">
+              <span>Compare policies</span><strong>Benefits enrollment vs. IT access</strong>
+            </button>
+            <button type="button" data-question="How should employees report a suspected security incident?">
+              <span>Security process</span><strong>Report a security incident</strong>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="composer-area">
+        <form id="chat-form" class="composer">
+          <label class="sr-only" for="question">Ask an employee policy question</label>
+          <textarea id="question" rows="1" maxlength="2000" placeholder="Ask about leave, benefits, payroll, IT access…" required></textarea>
+          <button id="send-button" type="submit" aria-label="Send question">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <p class="disclaimer">Answers are generated from fictional evaluation policies. Verify important decisions with the policy owner.</p>
+      </footer>
+    </main>
+  </div>
+  <template id="source-template">
+    <article class="source-card">
+      <span class="source-number"></span>
+      <div><strong class="source-name"></strong><p class="source-location"></p></div>
+    </article>
+  </template>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

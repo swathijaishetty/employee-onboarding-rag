@@ -4,10 +4,9 @@ from collections import Counter, defaultdict
 import math
 import re
 
-import ollama
-
 from .config_v3 import SETTINGS, Settings
 from .ingest_v3 import get_collection
+from .model_client_v3 import embed
 from .models_v3 import SearchResult
 
 
@@ -70,7 +69,7 @@ def retrieve(query: str, settings: Settings = SETTINGS) -> list[SearchResult]:
     ids = catalog["ids"]
     documents = catalog["documents"] or []
     metadatas = catalog["metadatas"] or []
-    query_vector = ollama.embed(model=settings.embedding_model, input=query)["embeddings"][0]
+    query_vector = embed(model=settings.embedding_model, input=query)["embeddings"][0]
     semantic = collection.query(
         query_embeddings=[query_vector],
         n_results=min(settings.semantic_candidates, count),

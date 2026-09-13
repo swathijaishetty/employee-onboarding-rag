@@ -3,10 +3,10 @@
 from pathlib import Path
 
 import chromadb
-import ollama
 
 from .chunking_v3 import create_chunks
 from .config_v3 import SETTINGS, Settings
+from .model_client_v3 import embed
 
 
 def get_collection(settings: Settings = SETTINGS):
@@ -21,7 +21,7 @@ def _embed(texts: list[str], settings: Settings) -> list[list[float]]:
     vectors: list[list[float]] = []
     for start in range(0, len(texts), settings.embedding_batch_size):
         batch = texts[start : start + settings.embedding_batch_size]
-        response = ollama.embed(model=settings.embedding_model, input=batch)
+        response = embed(model=settings.embedding_model, input=batch)
         vectors.extend(response["embeddings"])
         print(f"Embedded {min(start + len(batch), len(texts))}/{len(texts)} new chunks")
     return vectors

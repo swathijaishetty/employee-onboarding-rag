@@ -19,6 +19,7 @@ Run commands from the repository root using the Python 3.11 virtual environment 
 - `python -m src.v3.ingest_v3` incrementally synchronizes all configured PDFs into the Version 3 store.
 - `python -m src.v3.evaluate_v3` runs the Version 3 retrieval regression set.
 - `python -m src.v3.main_v3` starts the Version 3 assistant.
+- `python -m src.v3.api_v3` serves the Version 3 FastAPI API and browser interface.
 - `python src/v2/pdf_reader.py` and `python src/v2/chunk_pdf.py` provide parser and chunking smoke checks.
 - `python src/v2/test_memory_v2.py` checks bounded follow-up session memory without calling Ollama.
 - `python src/test_embedding.py`, `python src/test_chroma.py`, and `python src/test_retrieval.py` exercise Ollama/Chroma integration; they require the corresponding local service and collection.
