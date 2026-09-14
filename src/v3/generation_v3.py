@@ -41,6 +41,9 @@ def generate(question: str, results: list[SearchResult], settings: Settings = SE
 Answer only from the evidence. Explain conditions, exceptions, deadlines, and
 employee categories that materially affect the answer. If evidence conflicts,
 state the conflict instead of choosing silently. Do not infer missing facts.
+Before returning the insufficient-evidence response, inspect every evidence
+block, including table-like rows extracted from PDFs. Treat an explicit fact as
+support even when the question uses different wording from the evidence.
 For comparisons, state each supported fact side by side. Do not label one rule
 stricter, better, earlier, or more generous unless the evidence says so.
 Cite every factual sentence with one or more evidence numbers like [1]. If the
