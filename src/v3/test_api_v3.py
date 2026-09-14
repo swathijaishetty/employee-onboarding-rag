@@ -33,6 +33,24 @@ try:
             payload = response.json()
             assert payload["citations"][0]["source"] == "leave_policy.pdf"
             assert payload["retrieval"][0]["rank"] == 1
+            assert payload["response_type"] == "rag"
+
+            restored = await client.post(
+                "/api/chat",
+                json={
+                    "question": "What about carryover?",
+                    "session_id": "history-session",
+                    "history": [
+                        {
+                            "question": "Tell me about annual leave.",
+                            "search_query": "annual leave policy",
+                            "answer": "Employees receive annual leave.",
+                        }
+                    ],
+                },
+            )
+            assert restored.status_code == 200, restored.text
+            assert len(api_v3.sessions.get("history-session").memory.turns) == 2
             assert (await client.delete("/api/sessions/test-session")).status_code == 200
             invalid = await client.post(
                 "/api/chat", json={"question": " ", "session_id": "bad"}
@@ -42,4 +60,20 @@ try:
     asyncio.run(run_checks())
 finally:
     api_v3.answer_question = original
+
+
+async def run_casual_check():
+    transport = httpx.ASGITransport(app=api_v3.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={"question": "Hello!", "session_id": "casual-session"},
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["response_type"] == "greeting"
+        assert payload["citations"] == []
+
+
+asyncio.run(run_casual_check())
 print("api assertions: ok")

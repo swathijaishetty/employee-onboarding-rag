@@ -5,6 +5,7 @@ const elements = {
   messages: document.querySelector("#messages"),
   welcome: document.querySelector("#welcome"),
   clear: document.querySelector("#clear-button"),
+  picker: document.querySelector("#conversation-picker"),
   debug: document.querySelector("#debug-toggle"),
   statusDot: document.querySelector("#status-dot"),
   statusLabel: document.querySelector("#status-label"),
@@ -13,10 +14,83 @@ const elements = {
   sourceTemplate: document.querySelector("#source-template"),
 };
 
+const HISTORY_KEY = "northstar-conversations-v1";
+const ACTIVE_KEY = "northstar-active-conversation";
+const MAX_CONVERSATIONS = 20;
+const MAX_MESSAGES = 60;
+const welcomeMarkup = elements.welcome.outerHTML;
 const newSessionId = () => `session-${crypto.randomUUID()}`;
-let sessionId = sessionStorage.getItem("northstar-session") || newSessionId();
-sessionStorage.setItem("northstar-session", sessionId);
 let waiting = false;
+let memoryTurns = 8;
+
+function newConversation() {
+  const now = new Date().toISOString();
+  return {
+    id: newSessionId(),
+    title: "New conversation",
+    createdAt: now,
+    updatedAt: now,
+    messages: [],
+    turns: [],
+  };
+}
+
+function loadConversations() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item.id === "string")
+      .map((item) => ({
+        ...item,
+        title: item.title || "New conversation",
+        messages: Array.isArray(item.messages) ? item.messages : [],
+        turns: Array.isArray(item.turns) ? item.turns : [],
+      }));
+  } catch (_) {
+    return [];
+  }
+}
+
+let conversations = loadConversations();
+let sessionId = null;
+try {
+  sessionId = localStorage.getItem(ACTIVE_KEY);
+} catch (_) {
+  // Start an in-memory conversation if browser storage is unavailable.
+}
+if (!conversations.some((item) => item.id === sessionId)) {
+  const conversation = newConversation();
+  conversations.unshift(conversation);
+  sessionId = conversation.id;
+}
+
+function currentConversation() {
+  return conversations.find((item) => item.id === sessionId);
+}
+
+function saveConversations() {
+  conversations.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  conversations = conversations.slice(0, MAX_CONVERSATIONS);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations));
+    localStorage.setItem(ACTIVE_KEY, sessionId);
+  } catch (_) {
+    // The active conversation still works if browser storage is unavailable.
+  }
+  renderPicker();
+}
+
+function renderPicker() {
+  elements.picker.replaceChildren();
+  conversations.forEach((conversation) => {
+    const option = document.createElement("option");
+    option.value = conversation.id;
+    option.textContent = conversation.title || "New conversation";
+    option.selected = conversation.id === sessionId;
+    elements.picker.append(option);
+  });
+}
 
 function scrollToLatest() {
   elements.messages.scrollTop = elements.messages.scrollHeight;
@@ -27,6 +101,18 @@ function resizeInput() {
   elements.input.style.height = `${Math.min(elements.input.scrollHeight, 140)}px`;
 }
 
+function bindSuggestions() {
+  document.querySelectorAll("[data-question]").forEach((button) => {
+    button.addEventListener("click", () => submitQuestion(button.dataset.question));
+  });
+}
+
+function showWelcome() {
+  elements.messages.insertAdjacentHTML("beforeend", welcomeMarkup);
+  elements.welcome = document.querySelector("#welcome");
+  bindSuggestions();
+}
+
 function hideWelcome() {
   if (elements.welcome) {
     elements.welcome.remove();
@@ -34,7 +120,20 @@ function hideWelcome() {
   }
 }
 
-function addUserMessage(text) {
+function recordMessage(message) {
+  const conversation = currentConversation();
+  conversation.messages.push(message);
+  conversation.messages = conversation.messages.slice(-MAX_MESSAGES);
+  conversation.updatedAt = new Date().toISOString();
+  if (message.role === "user" && conversation.title === "New conversation") {
+    conversation.title = message.text.length > 46
+      ? `${message.text.slice(0, 43)}…`
+      : message.text;
+  }
+  saveConversations();
+}
+
+function addUserMessage(text, persist = true) {
   hideWelcome();
   const wrapper = document.createElement("article");
   wrapper.className = "message user";
@@ -46,6 +145,7 @@ function addUserMessage(text) {
   bubble.textContent = text;
   wrapper.append(label, bubble);
   elements.messages.append(wrapper);
+  if (persist) recordMessage({ role: "user", text });
   scrollToLatest();
 }
 
@@ -69,7 +169,16 @@ function removeLoadingMessage() {
   document.querySelector("#loading-message")?.remove();
 }
 
-function addAssistantMessage(payload, isError = false) {
+function storedPayload(payload) {
+  return {
+    answer: payload.answer,
+    citations: payload.citations || [],
+    search_query: payload.search_query || "",
+    response_type: payload.response_type || "rag",
+  };
+}
+
+function addAssistantMessage(payload, isError = false, persist = true) {
   removeLoadingMessage();
   const wrapper = document.createElement("article");
   wrapper.className = `message assistant${isError ? " error" : ""}`;
@@ -122,17 +231,40 @@ function addAssistantMessage(payload, isError = false) {
   }
   wrapper.append(label, bubble);
   elements.messages.append(wrapper);
+  if (persist) {
+    recordMessage({ role: "assistant", payload: storedPayload(payload), isError });
+  }
   scrollToLatest();
+}
+
+function renderConversation() {
+  elements.messages.replaceChildren();
+  elements.welcome = null;
+  const conversation = currentConversation();
+  if (!conversation.messages.length) {
+    showWelcome();
+    return;
+  }
+  conversation.messages.forEach((message) => {
+    if (message.role === "user") addUserMessage(message.text, false);
+    if (message.role === "assistant") {
+      addAssistantMessage(message.payload, Boolean(message.isError), false);
+    }
+  });
 }
 
 function setWaiting(value) {
   waiting = value;
   elements.send.disabled = value;
   elements.input.disabled = value;
+  elements.picker.disabled = value;
+  elements.clear.disabled = value;
 }
 
 async function submitQuestion(question) {
   if (!question || waiting) return;
+  const conversation = currentConversation();
+  const history = conversation.turns.slice(-memoryTurns);
   addUserMessage(question);
   elements.input.value = "";
   resizeInput();
@@ -142,10 +274,23 @@ async function submitQuestion(question) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, session_id: sessionId, debug: elements.debug.checked }),
+      body: JSON.stringify({
+        question,
+        session_id: sessionId,
+        history,
+        debug: elements.debug.checked,
+      }),
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "The assistant could not answer right now.");
+    if ((payload.response_type || "rag") === "rag") {
+      conversation.turns.push({
+        question,
+        search_query: payload.search_query.slice(0, 500),
+        answer: payload.answer.slice(0, 4000),
+      });
+      conversation.turns = conversation.turns.slice(-memoryTurns);
+    }
     addAssistantMessage(payload);
   } catch (error) {
     addAssistantMessage({ answer: error.message || "Unable to reach the RAG service." }, true);
@@ -155,16 +300,27 @@ async function submitQuestion(question) {
   }
 }
 
-async function clearConversation() {
+function startConversation() {
   if (waiting) return;
+  const conversation = newConversation();
+  conversations.unshift(conversation);
+  sessionId = conversation.id;
+  saveConversations();
+  renderConversation();
+  elements.input.focus();
+}
+
+function selectConversation(id) {
+  if (waiting || !conversations.some((item) => item.id === id)) return;
+  sessionId = id;
   try {
-    await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    localStorage.setItem(ACTIVE_KEY, sessionId);
   } catch (_) {
-    // A new client ID still guarantees fresh context if the server is unavailable.
+    // Selection still works for the current page.
   }
-  sessionId = newSessionId();
-  sessionStorage.setItem("northstar-session", sessionId);
-  window.location.reload();
+  renderPicker();
+  renderConversation();
+  elements.input.focus();
 }
 
 async function checkHealth() {
@@ -173,6 +329,7 @@ async function checkHealth() {
     const health = await response.json();
     const ready = health.status === "healthy" && health.indexed_chunks > 0;
     if (health.indexed_documents) elements.documentCount.textContent = `${health.indexed_documents}-policy`;
+    if (health.memory_turns) memoryTurns = health.memory_turns;
     elements.statusDot.className = `status-dot${ready ? "" : " error"}`;
     elements.statusLabel.textContent = ready ? "Systems ready" : "Setup required";
     const provider = health.model_provider === "gemini" ? "Gemini" : "Ollama";
@@ -197,10 +354,10 @@ elements.input.addEventListener("keydown", (event) => {
     elements.form.requestSubmit();
   }
 });
-elements.clear.addEventListener("click", clearConversation);
-document.querySelectorAll("[data-question]").forEach((button) => {
-  button.addEventListener("click", () => submitQuestion(button.dataset.question));
-});
+elements.clear.addEventListener("click", startConversation);
+elements.picker.addEventListener("change", (event) => selectConversation(event.target.value));
 
+saveConversations();
+renderConversation();
 checkHealth();
 elements.input.focus();

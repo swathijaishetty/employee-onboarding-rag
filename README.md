@@ -88,6 +88,7 @@ Version 3 in `src/v3/` is the full application. Its main improvements are:
 - Independent semantic and BM25 retrieval fused with reciprocal-rank fusion
 - Comparison coverage, duplicate reduction, and per-source limits
 - Multi-turn query resolution with bounded session memory
+- Browser-local conversation history with restorable follow-up context
 - Grounded prompting, inline citations, and citation-support checks
 - Retrieval evaluation for source hit rate and mean reciprocal rank
 - FastAPI endpoints and a responsive browser interface
@@ -102,7 +103,7 @@ python -m src.v3.evaluate_v3
 
 ### Web Interface
 
-The web client and API run in one FastAPI process. The interface provides isolated sessions, follow-up memory, source cards, retrieval diagnostics, health information, and conversation reset.
+The web client and API run in one FastAPI process. The interface provides isolated sessions, browser-local conversation history, follow-up memory, source cards, retrieval diagnostics, health information, and a new-conversation action. Greetings and thank-you messages are handled directly without running document retrieval.
 
 ![Version 3 web interface](output/output_v3_web.png)
 

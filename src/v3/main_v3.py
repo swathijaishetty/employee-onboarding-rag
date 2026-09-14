@@ -1,16 +1,68 @@
 """Interactive CLI for Version 3."""
 
+import re
+
 from .generation_v3 import generate
 from .memory_v3 import SessionMemory
 from .retrieval_v3 import retrieve
 
 
+GREETINGS = frozenset(
+    {
+        "hello",
+        "hey",
+        "hey there",
+        "hi",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }
+)
+ACKNOWLEDGEMENTS = frozenset(
+    {
+        "thanks",
+        "thank you",
+        "thanks a lot",
+        "thank you so much",
+        "appreciate it",
+        "got it thanks",
+    }
+)
+
+
+def _casual_response(question: str) -> tuple[str, str] | None:
+    normalized = re.sub(r"[^a-z\s]", "", question.lower())
+    normalized = " ".join(normalized.split())
+    if normalized in GREETINGS:
+        return (
+            "greeting",
+            "Hi! How can I help you with Northstar's employee policies?",
+        )
+    if normalized in ACKNOWLEDGEMENTS:
+        return (
+            "acknowledgement",
+            "You're welcome! I'm here if you have another policy question.",
+        )
+    return None
+
+
 def answer_question(question: str, memory: SessionMemory) -> dict:
+    casual = _casual_response(question)
+    if casual:
+        response_type, answer = casual
+        return {
+            "answer": answer,
+            "citations": [],
+            "search_query": question.strip(),
+            "evidence": [],
+            "response_type": response_type,
+        }
     search_query = memory.resolve(question)
     evidence = retrieve(search_query)
     result = generate(question, evidence)
     result["search_query"] = search_query
     result["evidence"] = evidence
+    result["response_type"] = "rag"
     memory.add(question, search_query, result["answer"])
     return result
 

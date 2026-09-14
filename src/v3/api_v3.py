@@ -31,9 +31,26 @@ sessions = SessionStore()
 rate_limiter = RateLimiter()
 
 
+class Citation(BaseModel):
+    number: int
+    source: str
+    page: int
+    section: str
+    policy_id: str = ""
+
+
+class ConversationTurn(BaseModel):
+    question: str = Field(min_length=1, max_length=SETTINGS.max_question_chars)
+    search_query: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=SETTINGS.max_question_chars)
     session_id: str = Field(min_length=8, max_length=128)
+    history: list[ConversationTurn] = Field(
+        default_factory=list, max_length=SETTINGS.memory_turns
+    )
     debug: bool = False
 
     @field_validator("question")
@@ -52,19 +69,12 @@ class ChatRequest(BaseModel):
         return value
 
 
-class Citation(BaseModel):
-    number: int
-    source: str
-    page: int
-    section: str
-    policy_id: str = ""
-
-
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
     search_query: str
     citations: list[Citation]
+    response_type: str = "rag"
     retrieval: list[dict[str, Any]] | None = None
 
 
@@ -99,6 +109,7 @@ async def health() -> dict:
             indexed_chunks=collection.count(),
             indexed_documents=len(sources),
             collection=SETTINGS.collection_name,
+            memory_turns=SETTINGS.memory_turns,
         )
     except Exception:
         details.update(status="degraded", index_error="Index unavailable")
@@ -121,6 +132,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     def run_pipeline() -> dict:
         with session.lock:
+            if not session.memory.turns:
+                for turn in request.history:
+                    session.memory.add(turn.question, turn.search_query, turn.answer)
             return answer_question(request.question, session.memory)
 
     try:
@@ -179,6 +193,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         session_id=request.session_id,
         search_query=result["search_query"],
         citations=citations,
+        response_type=result.get("response_type", "rag"),
         retrieval=retrieval,
     )
 

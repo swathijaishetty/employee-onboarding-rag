@@ -59,6 +59,9 @@ button { cursor: pointer; }
 .chat-header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .mobile-brand { display: none; }
 .header-actions { display: flex; align-items: center; gap: 14px; }
+.history-control { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.history-control select { max-width: 190px; padding: 9px 28px 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); font-size: 12px; }
+.history-control select:focus { outline: 2px solid rgba(58,116,92,.18); border-color: #6e9685; }
 .debug-control { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; user-select: none; cursor: pointer; }
 .debug-control input { accent-color: var(--forest-2); }
 .secondary-button { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: white; color: var(--ink); font-weight: 700; font-size: 12px; }
@@ -126,8 +129,9 @@ button { cursor: pointer; }
 @media (max-width: 600px) {
   .chat-header { min-height: 82px; padding: 14px 16px; gap: 10px; }
   .chat-header h2 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chat-header p, .debug-control span { display: none; }
+  .chat-header p, .debug-control span, .history-control span { display: none; }
   .header-actions { flex: none; gap: 8px; }
+  .history-control select { width: 92px; max-width: 92px; }
   .secondary-button { max-width: 76px; padding: 9px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .messages { padding: 30px 18px 22px; }
   .welcome { margin-top: 1vh; }
