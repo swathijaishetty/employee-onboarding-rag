@@ -1,186 +1,143 @@
 # Employee Onboarding RAG Assistant
 
-## Version 1 — Basic RAG Prototype
+A three-stage Retrieval-Augmented Generation project that answers employee-policy questions with grounded sources. It evolves from a small text-based CLI into a conversational PDF RAG application with hybrid retrieval, evaluation, FastAPI, and a responsive web interface.
 
-A Retrieval-Augmented Generation (RAG) based employee onboarding assistant that answers questions using company policy documents.
+**[Click-here for Project's Live Link](https://employee-policy-rag-v3.onrender.com/)**
 
-### Tech Stack
+> The policies are fictional and intended for learning and portfolio demonstration. The free Render service may take a short time to wake up.
 
-- Python 3.11
-- Ollama
-- Llama 3.2 3B — LLM
-- nomic-embed-text — Embeddings
-- ChromaDB — Vector Database
-- LangChain Text Splitters
+## Version Evolution
 
-### Current Features
-
-- Load employee policy documents
-- Split documents into chunks
-- Generate embeddings
-- Store embeddings in ChromaDB
-- Rewrite user queries for better retrieval
-- Retrieve relevant document chunks
-- Generate answers using Llama 3.2
-- Display sources used for the answer
-- Handle basic greetings and acknowledgements
-- Avoid answering when information is unavailable in the knowledge base
-- Interactive CLI-based chat
-
-### Knowledge Base
-
-- Leave Policy
-- IT Onboarding Policy
-- Work From Home Policy
-- Benefits Policy
-- Payroll Policy
-- Employee Handbook
-
-### RAG Flow
+| Version | Knowledge base | Retrieval | Interface |
+| --- | --- | --- | --- |
+| **V1** | Six TXT policies | Multi-query semantic search | Ollama CLI |
+| **V2** | Page-aware PDFs | Semantic search with lexical relevance checks | Conversational Ollama CLI |
+| **V3** | 26 structured PDFs | Semantic + BM25, reciprocal-rank fusion, and diversity selection | CLI, FastAPI, and web app |
 
 ```text
-Documents
-    ↓
-Chunking
-    ↓
-Embeddings
-    ↓
-ChromaDB
-    ↓
-User Query
-    ↓
-Query Rewriting
-    ↓
-Retrieval
-    ↓
-LLM Generation
-    ↓
-Answer + Sources
+Documents → Load and normalize → Chunk → Embed → ChromaDB
+                                                     ↓
+Answer + cited sources ← Grounded LLM prompt ← Retrieve ← Question
 ```
 
-### Output
+## Technology
 
-![Employee Onboarding RAG Assistant Output](output/output_v1.png)
+- Python 3.11, FastAPI, and Uvicorn
+- ChromaDB with cosine similarity
+- `pypdf` for PDF extraction
+- Ollama with `llama3.2:3b` and `nomic-embed-text` for local use
+- Gemini with `gemini-3.5-flash-lite` and `gemini-embedding-001` on Render
+- Custom BM25 and reciprocal-rank fusion in Version 3
 
-## Version 2 - PDF RAG Pipeline
+## Run Locally
 
-Version 2 uses six one-page PDF policies as its knowledge base:
-
-- `benefits_policy.pdf`
-- `employee_onboarding.pdf`
-- `it_onboarding.pdf`
-- `leave_policy.pdf`
-- `payroll_policy.pdf`
-- `work_from_home_policy.pdf`
-
-The PDF pipeline is implemented in `src/v2/`. `pdf_reader.py` extracts and normalizes page text with `pypdf`; `chunk_pdf.py` splits at policy section headings and only subdivides unusually long sections at sentence boundaries, retaining source, page, and section metadata; `ingest_v2.py` embeds each chunk with Ollama and synchronizes it into the local Chroma collection `employee_policies_v2`; `retrieval_v2.py` embeds a question, applies semantic and lexical relevance checks, and returns focused policy excerpts; `generation_v2.py` asks the Llama model to answer only from those excerpts and parse source citations; `memory_v2.py` rewrites context-dependent follow-ups using a bounded recent-turn window; and `main_v2.py` provides the interactive CLI.
-
-### Running Version 2
-
-From the repository root, activate the Python 3.11 environment and ensure Ollama is running:
+Create and activate a Python 3.11 environment, install dependencies, and ensure Ollama is running:
 
 ```powershell
 .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
-python -m src.v2.ingest_v2
-python -m src.v2.main_v2
 ```
 
-Configuration is read from `.env` (`PDF_DIRECTORY`, `LLM_MODEL`, `EMBEDDING_MODEL`, `CHROMA_PATH`, `COLLECTION_NAME`, `TOP_K`, `DISTANCE_THRESHOLD`, `MEMORY_TURNS`, `MAX_SECTION_CHARS`, `MIN_SECTION_CHUNKS`, `RETRIEVAL_CANDIDATE_MULTIPLIER`, `MAX_CHUNKS_PER_SOURCE`, `LEXICAL_FALLBACK_DISTANCE`, `LEXICAL_SCORE_WEIGHT`, `RANK_SCORE_MARGIN`, and `MAX_REWRITE_CHARS`). The assistant cites the policy file and page used for an answer and returns `I couldn't find that information in the available employee documents.` when the PDFs do not support the question. Type `clear` during a session to remove follow-up context. Parser, chunking, and memory smoke checks can be run with `python src/v2/test_pdf_reader.py`, `python src/v2/test_chunk_pdf.py`, and `python src/v2/test_memory_v2.py`.
+Each version has its own ingestion and application entry points:
 
-### Version 2 Output
+```powershell
+# Version 1
+python src/ingest.py
+python src/main.py
 
-The example shows section-grounded retrieval, a follow-up resolved from session memory, an unsupported-question fallback, and clearing the stored conversation context.
+# Version 2
+python -m src.v2.ingest_v2
+python -m src.v2.main_v2
 
-![Employee Onboarding RAG Assistant Version 2 Output](output/output_v2.png)
+# Version 3 CLI
+python -m src.v3.ingest_v3
+python -m src.v3.main_v3
 
-## Version 3 - Hybrid Policy RAG
+# Version 3 web application
+python -m src.v3.api_v3
+```
 
-Version 3 is isolated in `src/v3/` and reads every PDF found in the configured
-directory; it does not assume a fixed document count. The current shared corpus
-contains the six baseline policies plus 20 fictional, two-page policies with
-effective dates, tables, eligibility distinctions, exceptions, and cross-policy
-references.
+Open `http://127.0.0.1:8000` for the web interface or `http://127.0.0.1:8000/docs` for the interactive API documentation.
 
-The pipeline removes repeated PDF headers, preserves numbered policy sections,
-and adaptively splits only sections that exceed a configurable word ceiling.
-Stable content hashes allow incremental ingestion: unchanged chunks keep their
-embeddings while changed and deleted content is synchronized. Retrieval combines
-cosine-nearest semantic candidates with BM25 keyword candidates using reciprocal
-rank fusion, then reduces redundant evidence before grounded generation. Answers
-use verified inline citations, while bounded session memory rewrites ambiguous
-follow-up questions. A checked-in evaluation set measures source hit rate and
-mean reciprocal rank.
+## Version 1 — Basic Text RAG
+
+Version 1 in `src/` introduces the complete RAG lifecycle using six TXT policies. It creates overlapping 500-character chunks, embeds them with Ollama, stores them in ChromaDB, expands questions into alternate search queries, and generates answers with cited filenames. It also handles greetings and refuses unsupported questions.
+
+![Version 1 CLI output](output/output_v1.png)
+
+## Version 2 — Structured PDF RAG
+
+Version 2 in `src/v2/` reads every PDF in `data/documents/PDF Files/`. It normalizes page text, preserves numbered sections, and splits only long sections at sentence boundaries. Retrieval combines semantic distance with lexical checks and source diversity. Short-term memory rewrites ambiguous follow-ups, while answer validation requires citations and rejects unsupported numbers.
+
+```powershell
+python src/v2/test_pdf_reader.py
+python src/v2/test_chunk_pdf.py
+python src/v2/test_memory_v2.py
+```
+
+![Version 2 CLI output](output/output_v2.png)
+
+## Version 3 — Hybrid RAG Application
+
+Version 3 in `src/v3/` is the full application. Its main improvements are:
+
+- Adaptive, section-aware chunking with content-based IDs
+- Incremental ingestion that embeds only new or changed chunks
+- Independent semantic and BM25 retrieval fused with reciprocal-rank fusion
+- Comparison coverage, duplicate reduction, and per-source limits
+- Multi-turn query resolution with bounded session memory
+- Grounded prompting, inline citations, and citation-support checks
+- Retrieval evaluation for source hit rate and mean reciprocal rank
+- FastAPI endpoints and a responsive browser interface
 
 ```powershell
 python -m src.v3.test_chunking_v3
 python -m src.v3.test_retrieval_math_v3
-python -m src.v3.ingest_v3
 python -m src.v3.evaluate_v3
-python -m src.v3.main_v3
-python -m src.v3.api_v3
 ```
 
-The final command starts the FastAPI service and responsive chat interface at
-`http://127.0.0.1:8000`. Interactive API documentation is available at
-`http://127.0.0.1:8000/docs`. The web client provides isolated session memory,
-structured source cards, optional retrieval diagnostics, service health, and
-conversation reset. Run Version 3 ingestion before starting the web application.
+![Version 3 CLI output](output/output_v3.png)
 
-Version 3 settings use the `V3_` prefix, including `V3_PDF_DIRECTORY`,
-`V3_CHROMA_PATH`, `V3_COLLECTION_NAME`, `V3_MODEL_PROVIDER`, `V3_LLM_MODEL`,
-`V3_EMBEDDING_MODEL`,
-`V3_MAX_CHUNK_WORDS`, confidence thresholds, candidate counts, rank-fusion
-controls, and memory limits.
+### Web Interface
 
-### Version 3 Output
+The web client and API run in one FastAPI process. The interface provides isolated sessions, follow-up memory, source cards, retrieval diagnostics, health information, and conversation reset.
 
-The output below demonstrates grounded citations, session-aware follow-up
-rewriting, a cross-policy comparison, and rejection of an unsupported question.
+![Version 3 web interface](output/output_v3_web.png)
 
-![Employee Policy Assistant Version 3 Output](output/output_v3.png)
+## Deployment
 
-### Version 3 Web Interface
+[`render.yaml`](render.yaml) defines the free Render web service. During deployment, Render installs dependencies, ingests the PDF collection, and starts Uvicorn. The deployed application uses Gemini for both generation and embeddings:
 
-The FastAPI application serves the chat frontend and JSON API from the same
-process. The interface reads document and chunk counts from the health endpoint
-instead of assuming a fixed corpus size.
+- `gemini-3.5-flash-lite` for query rewriting and grounded answers
+- `gemini-embedding-001` for document and query embeddings
+- `employee_policies_v3_gemini` as the deployment collection
 
-![Employee Policy Assistant Version 3 Web Interface](output/output_v3_web.png)
+Create `GEMINI_API_KEY` as a secret in Render; never commit it or expose it to the browser. The free Gemini tier has request limits. Ingestion retries temporary per-minute limits, while daily quota exhaustion requires waiting for Google’s quota reset.
 
-### Deploying Version 3
+## Project Structure
 
-`render.yaml` defines a Render web service that installs dependencies, builds
-the Chroma index from the repository PDFs, and starts Uvicorn. Version 3 selects
-its model backend with `V3_MODEL_PROVIDER`: local development defaults to Ollama
-with `llama3.2:3b` and `nomic-embed-text`, while the Render blueprint selects
-Gemini with `gemini-3.5-flash-lite` and `gemini-embedding-001`. Add a free-tier
-`GEMINI_API_KEY` as a secret in Render. The browser never receives this key.
+```text
+data/documents/             TXT policies and shared PDF corpus
+src/                        Version 1 pipeline and CLI
+src/v2/                     Version 2 PDF pipeline and CLI
+src/v3/                     Version 3 RAG, evaluation, API, and web client
+output/                     Demonstration screenshots
+render.yaml                 Render deployment blueprint
+requirements.txt            Python dependencies
+```
 
-The document index and query must always use the same provider and embedding
-model. Render therefore uses its own Gemini collection name and rebuilds it at
-deploy time. Ingestion respects Gemini's free per-minute embedding quota by
-waiting for the retry delay returned by Google and resuming the failed batch.
-If the daily free quota is exhausted, the API returns a clear quota message
-instead of falling back to a paid provider. Never commit API keys.
+Local Chroma databases, `.env`, API keys, and local contributor/reference files are excluded from Git.
 
-To deploy without model charges, create a Gemini API key in a Google AI project
-that does not have Cloud Billing enabled. In Render, create a Blueprint from this
-repository, select the Free instance defined in `render.yaml`, and enter the key
-when Render requests `GEMINI_API_KEY`. Free-tier quotas are limited, so this
-configuration is intended for learning and portfolio demonstrations.
+## Version 3 Sample Outputs
 
-### Sample Output Screenshots
+The examples demonstrate grounded policy answers, citations, follow-up questions, unsupported-question handling, comparisons, and mobile layout.
 
-The following examples show grounded policy answers, cited sources,
-conversation follow-ups, unsupported-question handling, and the responsive
-mobile interface in the deployed Version 3 application.
+![Annual and sick leave responses](output/SampleOP1.jpeg)
 
-![Version 3 annual and sick leave responses](output/SampleOP1.jpeg)
+![Annual leave and work-from-home responses](output/SampleOP2.jpeg)
 
-![Version 3 annual leave and work-from-home responses](output/SampleOP2.jpeg)
+![Laptop onboarding and unsupported salary responses](output/SampleOP3.jpeg)
 
-![Version 3 laptop onboarding and unsupported salary responses](output/SampleOP3.jpeg)
-
-![Version 3 mobile policy comparison response](output/SampleOP4.jpeg)
+![Mobile policy comparison response](output/SampleOP4.jpeg)
