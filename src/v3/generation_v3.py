@@ -34,6 +34,56 @@ def _context(results: list[SearchResult], limit: int) -> str:
     return "\n\n".join(blocks)
 
 
+def _parse_output(output: str, results: list[SearchResult]) -> dict:
+    answer = output.strip()
+    sources_part = ""
+    if "ANSWER:" in answer:
+        answer = answer.split("ANSWER:", 1)[1]
+    if "SOURCES:" in answer:
+        answer, sources_part = answer.split("SOURCES:", 1)
+    answer = answer.strip()
+    cited_values = re.findall(r"\[(\d+)\]", answer) + re.findall(r"\b(\d+)\b", sources_part)
+    citations = sorted({int(value) for value in cited_values if 1 <= int(value) <= len(results)})
+    citations = _supported_citations(answer, citations, results)
+    if answer != FALLBACK and not citations:
+        return {"answer": FALLBACK, "citations": []}
+    allowed = set(citations)
+    answer = re.sub(
+        r"\s*\[(\d+)\]",
+        lambda match: match.group(0) if int(match.group(1)) in allowed else "",
+        answer,
+    ).strip()
+    if citations and not re.search(r"\[\d+\]", answer):
+        answer += " " + " ".join(f"[{number}]" for number in citations)
+    evidence = " ".join(item.text for item in results)
+    answer_numbers = set(re.findall(r"\b\d+(?:\.\d+)?\b", re.sub(r"\[\d+\]", "", answer)))
+    evidence_numbers = set(re.findall(r"\b\d+(?:\.\d+)?\b", evidence))
+    if not answer_numbers.issubset(evidence_numbers):
+        return {"answer": FALLBACK, "citations": []}
+    return {"answer": answer, "citations": citations}
+
+
+def _retry_warranted(results: list[SearchResult], settings: Settings) -> bool:
+    return any(
+        item.lexical_score > 0
+        and item.semantic_distance is not None
+        and item.semantic_distance <= settings.semantic_only_max_distance
+        for item in results
+    )
+
+
+def _focused_context(results: list[SearchResult], settings: Settings) -> str:
+    ranked = sorted(
+        enumerate(results, start=1),
+        key=lambda pair: pair[1].lexical_score,
+        reverse=True,
+    )[: settings.max_chunks_per_source]
+    return "\n\n".join(
+        f"[{number}] {item.source}, page {item.page}, {item.section}\n{item.text}"
+        for number, item in ranked
+    )
+
+
 def generate(question: str, results: list[SearchResult], settings: Settings = SETTINGS) -> dict:
     if not results:
         return {"answer": FALLBACK, "citations": []}
@@ -65,30 +115,29 @@ QUESTION: {question}
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
     )
-    output = response["message"]["content"].strip()
-    answer = output
-    sources_part = ""
-    if "ANSWER:" in answer:
-        answer = answer.split("ANSWER:", 1)[1]
-    if "SOURCES:" in answer:
-        answer, sources_part = answer.split("SOURCES:", 1)
-    answer = answer.strip()
-    cited_values = re.findall(r"\[(\d+)\]", answer) + re.findall(r"\b(\d+)\b", sources_part)
-    citations = sorted({int(value) for value in cited_values if 1 <= int(value) <= len(results)})
-    citations = _supported_citations(answer, citations, results)
-    if answer != FALLBACK and not citations:
-        return {"answer": FALLBACK, "citations": []}
-    allowed = set(citations)
-    answer = re.sub(
-        r"\s*\[(\d+)\]",
-        lambda match: match.group(0) if int(match.group(1)) in allowed else "",
-        answer,
-    ).strip()
-    if citations and not re.search(r"\[\d+\]", answer):
-        answer += " " + " ".join(f"[{number}]" for number in citations)
-    evidence = " ".join(item.text for item in results)
-    answer_numbers = set(re.findall(r"\b\d+(?:\.\d+)?\b", re.sub(r"\[\d+\]", "", answer)))
-    evidence_numbers = set(re.findall(r"\b\d+(?:\.\d+)?\b", evidence))
-    if not answer_numbers.issubset(evidence_numbers):
-        return {"answer": FALLBACK, "citations": []}
-    return {"answer": answer, "citations": citations}
+    result = _parse_output(response["message"]["content"], results)
+    if result["answer"] != FALLBACK or not _retry_warranted(results, settings):
+        return result
+
+    retry_prompt = f"""The previous answer attempt returned insufficient evidence.
+Re-check the strongest retrieved excerpts below. Table-like rows are evidence.
+If an excerpt explicitly answers the question, give that answer without adding
+unstated facts. Otherwise return exactly: {FALLBACK}
+
+Return exactly this structure:
+ANSWER:
+<answer with inline citations>
+SOURCES:
+<comma-separated evidence numbers, or none>
+
+QUESTION: {question}
+
+STRONGEST EVIDENCE:
+{_focused_context(results, settings)}
+"""
+    retry_response = chat(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": retry_prompt}],
+        options={"temperature": 0},
+    )
+    return _parse_output(retry_response["message"]["content"], results)
